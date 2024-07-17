@@ -19,12 +19,12 @@ db.init_app(app)
 api = Api(app)
 
 class ClearSession(Resource):
-
-    def delete(self):
     
+    def delete(self):
+        
         session['page_views'] = None
         session['user_id'] = None
-
+        
         return {}, 204
 
 class IndexArticle(Resource):
@@ -34,9 +34,9 @@ class IndexArticle(Resource):
         return make_response(jsonify(articles), 200)
 
 class ShowArticle(Resource):
-
+    
     def get(self, id):
-
+        
         article = Article.query.filter(Article.id == id).first()
         article_json = article.to_dict()
 
@@ -52,32 +52,31 @@ class ShowArticle(Resource):
         return article_json, 200
 
 class Login(Resource):
-
+    
     def post(self):
         
         username = request.get_json().get('username')
         user = User.query.filter(User.username == username).first()
 
         if user:
-        
+            
             session['user_id'] = user.id
             return user.to_dict(), 200
 
         return {}, 401
 
 class Logout(Resource):
-
+    
     def delete(self):
-
+        
         session['user_id'] = None
         
         return {}, 204
 
 class CheckSession(Resource):
-
+    
     def get(self):
-        
-        user_id = session['user_id']
+        user_id = session.get('user_id')
         if user_id:
             user = User.query.filter(User.id == user_id).first()
             return user.to_dict(), 200
@@ -87,12 +86,24 @@ class CheckSession(Resource):
 class MemberOnlyIndex(Resource):
     
     def get(self):
-        pass
+        user_id = session.get('user_id')
+        if not user_id:
+            return {'message': 'Unauthorized access'}, 401
+
+        articles = [article.to_dict() for article in Article.query.filter_by(is_member_only=True).all()]
+        return make_response(jsonify(articles), 200)
 
 class MemberOnlyArticle(Resource):
     
     def get(self, id):
-        pass
+        user_id = session.get('user_id')
+        if not user_id:
+            return {'message': 'Unauthorized access'}, 401
+
+        article = Article.query.filter_by(id=id, is_member_only=True).first()
+        if article:
+            return jsonify(article.to_dict()), 200
+        return {'message': 'Article not found or not accessible'}, 200
 
 api.add_resource(ClearSession, '/clear', endpoint='clear')
 api.add_resource(IndexArticle, '/articles', endpoint='article_list')
@@ -105,4 +116,4 @@ api.add_resource(MemberOnlyArticle, '/members_only_articles/<int:id>', endpoint=
 
 
 if __name__ == '__main__':
-    app.run(port=5555, debug=True)
+    app.run (port=5555, debug=True)
